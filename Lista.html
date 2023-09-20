@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="styledalista.css">
+</head>
+<body>
+    <main class="conteudo">
+        <div id="botaodeadd">
+            <button class="Novo" id="novocadastro">Novo</button>
+        </div>
+
+        <div id="lista" class="lista">
+            <h1>Usuários cadastrados</h1>
+            <table id="usuarioscadastrados" class="tabeladeusuarios" border="4px" cellspacing="2">
+                <thead>
+                    <tr>    
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Opções</th>
+                    </tr>
+                </thead>
+                <tbody id ="corpodatablea">
+                </tbody>
+            </table>
+        </div>
+    </main>
+       
+    <script type="module" >
+        //Importando as funções que eu preciso do firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+
+        //Configurações para eu poder usar o firebase no meu código
+        const firebaseConfig = {
+        apiKey: "AIzaSyBuBxUdtdEIpqhax583zJB2WX7yj91Kx8A",
+        authDomain: "cadastro-fe267.firebaseapp.com",
+        databaseURL: "https://cadastro-fe267-default-rtdb.firebaseio.com",
+        projectId: "cadastro-fe267",
+        storageBucket: "cadastro-fe267.appspot.com",
+        messagingSenderId: "844301402709",
+        appId: "1:844301402709:web:45b6ace4841a0789680adc",
+        measurementId: "G-E8YXC82L4H"
+        };
+
+        // Iniciando o Firebase e o seu banco de dados
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const usuariosRef = ref(db, "Usuario");
+        //Chamando a função carregardados() para construir as linhas da tabela
+        //com as informações dos usuários
+        carregardados();
+
+        //Eu vou ser bem sincero, as duas próximas linhas de código foram feitas 
+        //e eu acabei não as usando, porém eu tô com pavor de tirar e fazer
+        //meu código não funcionar, por favor desconsidere enquanto estiver
+        //analisando o meu código, obrigado
+        let m = 0;
+        let Palavrinha = "";
+
+        function carregardados() {
+            //Representação da tabela
+            const tabela = document.getElementById("corpodatablea");
+            //Essa variável "i" é o meu contador
+            let i = 0;
+
+            //limpar a tabela
+            tabela.innerHTML = '';
+            
+            //Pegar os dados do banco de dados e adicionar a uma linha na tabela
+            get(usuariosRef).then((snapshot) => {
+                if(snapshot.exists()) {
+                    snapshot.forEach((childSnapshot) => {
+                        //Estou criando novas linhas da tabela e 
+                        //inserindo informações nelas. Isso será
+                        //repetido a cada valor do meu banco de
+                        //dados
+                        const infousuario = childSnapshot.val();
+                        const novalinha = tabela.insertRow();
+                        const novonome = novalinha.insertCell(0);
+                        const novoemail = novalinha.insertCell(1);
+                        const novosbotoes = novalinha.insertCell(2);
+                        
+                        //Criando as representações dos campos de 
+                        //texto, email e botões para serem inseridos
+                        //nas linhas da tabela
+                        novalinha.id = "Linha"+i;
+                        const nomedousuario = document.createElement("p");
+                        nomedousuario.innerText = infousuario.username;
+                        novonome.appendChild(nomedousuario);
+                        novonome.id= "nomedalinha"+i;
+                        const enderecodeemail = document.createElement("p");
+                        enderecodeemail.innerText = infousuario.email;
+                        novoemail.appendChild(enderecodeemail);
+                        novoemail.id = "emaildalinha"+i;
+                        novosbotoes.id = "botoesdalinha"+i;
+                        novosbotoes.class = "Botoes";
+                        
+                        //Criando os meus botões de mudar e excluir
+                        const botaodemudar = document.createElement("button");
+                        botaodemudar.innerText = "Alterar";
+                        //Adicionando minha função ao botão, em que ao ser
+                        //clicado, permitirá a alteração de informações da
+                        //linha
+                        botaodemudar.onclick = trocainfo;
+                        const botaodeapagar = document.createElement("button");
+                        botaodeapagar.innerText = "Remover";
+                        //Adicionando minha função ao botão, em que ao ser
+                        //clicado, permitirá a exclusão das informações da
+                        //linha no banco de dados
+                        botaodeapagar.onclick = excluir;
+                        //inserindo os botões na minha célula da linha
+                        document.getElementById("botoesdalinha"+i).appendChild(botaodemudar);
+                        document.getElementById("botoesdalinha"+i).appendChild(botaodeapagar);
+
+                        //Aumentando o contador
+                        i++;
+                    })
+                }
+            })
+        }
+
+
+    //Função que permitirá a edição de informações de uma linha da tabela
+    function trocainfo(event) {
+        //Fazendo representações da linha em que o evento está inserido
+        var botaodealterar = event.target;
+        var _linhapai = botaodealterar.closest("tr");
+        //Fazendo representações das cédulas de nome e email da liha
+        const celuladonome = _linhapai.querySelector("td:nth-child(1)");
+        const celuladoemail = _linhapai.querySelector("td:nth-child(2)"); 
+        
+        //Essa função serve para eu salvar o valor do nome, porque eu vou precisar
+        //usar futuramente para poder pesquisar o valor no meu banco de dados do
+        //firebase, e eu preciso fazer isso com o nome antes de ser alterado
+        if(event.target.closest("tr").querySelector("td:nth-child(1) p")!== null){
+        var Nomedofulano = manternome(event);
+        }
+
+
+        //A seguinte estrutura de decisão servirá para trocar os campos
+        //de texto de nome e email das cedulas por inputs, trocando também
+        //o botão "Alterar" para "Finalizar alterações", dessa maneira
+        //será possível a edição das informações nas linhas da tabela
+        if(botaodealterar.innerText === "Alterar") {
+        //TROCANDO O NOME
+        //Selecionando a variável da tag <p></p> dentro da cédula
+        var nomeanterior = _linhapai.querySelector("td:nth-child(1) p").innerText;
+        console.log(nomeanterior);
+        //Criando novos inputs para substituir o campo de texto e então
+        //editar o nome
+        var nomeparamudar = document.createElement("input");
+        nomeparamudar.type = "text";
+        //Seu valor inicial será igual ao valor do texto anterior
+        nomeparamudar.value = nomeanterior;
+        //Requisito de tamanho máximo dito no arquivo pdf que vocês me mandaram
+        nomeparamudar.maxLength = "150";
+        //Eu preciso definir o valor do id como o nome anteiror pois irá me ajudar 
+        //a manipular as informações no banco de dados futuramente 
+        nomeparamudar.id = nomeanterior;
+        //Limpando a cédula e inserindo o novo input
+        celuladonome.innerHTML = "";
+        celuladonome.appendChild(nomeparamudar);
+
+        //TROCANDO O EMAIL
+        var emailanterior = _linhapai.querySelector("td:nth-child(2) p").innerText;
+        //obs: colocar evento no input ae apertar enter
+        //Criando novos inputs para substituir o campo de texto e então
+        //editar o email
+        var emailparamudar = document.createElement("input");
+        emailparamudar.type = "email";
+         //Seu valor inicial será igual ao valor do texto anterior
+        emailparamudar.value = emailanterior;
+        //Requisito de tamanho máximo dito no arquivo pdf que vocês me mandaram
+        emailparamudar.maxLength = 20;
+        //Limpando a cédula e inserindo o novo input
+        celuladoemail.innerHTML = "";
+        celuladoemail.appendChild(emailparamudar);  
+
+        //Mudando o texto do botão para reutilizar essa função, porém com
+        //a finalidade de redefinir os novos valores na linha e no banco de
+        //dadoso
+        botaodealterar.innerText = "Finalizar_alterações";
+    } else if (botaodealterar.innerText === "Finalizar_alterações") {
+            //Selecionando o valor da tag <input></input> dentro da cédula 1
+            // para redefinir o valor do nome
+            var _Nomeasertrocado = _linhapai.querySelector("td:nth-child(1) input").value;
+            //A seguinte variável serve para eu pegar o nome anterior do valor, para
+            //poder pesquisar no banco de dados futuramente
+            var passarnomenafuncao = "";
+            passarnomenafuncao = _linhapai.querySelector("td:nth-child(1) input").id;
+            //colocar evento no input ae apertar enter
+            //Selecionando o valor da tag <input></input> dentro da cédula 2
+            // para redefinir o valor do email
+            var _emailasertrocado = _linhapai.querySelector("td:nth-child(2) input").value;
+            //A seguinte constante é um novo campo de texto que substituirá o
+            //campo de input da cedula 1 com os novos valores definidos do nome
+            const novocampodetexto = document.createElement("p"); //Campo de texto do nome
+            //Definindo o valor do novo campo de texto com o vlaro estabelecido
+            //no input anterior
+            novocampodetexto.innerText = _Nomeasertrocado;
+            novocampodetexto.id = passarnomenafuncao; 
+            //limpando a cedula do nome e inserindo o novo campo de texto
+            celuladonome.innerHTML = "";
+            celuladonome.appendChild(novocampodetexto);
+             //A seguinte constante é um novo campo de texto que substituirá o
+            //campo de input da cedula 2 com os novos valores definidos do email
+            const novocampodeemail = document.createElement("p");
+            //Definindo o valor do novo campo de texto com o valor estabelecido
+            //no input anterior
+            novocampodeemail.innerText = _emailasertrocado;
+            //limpando a cedula do email e inserindo o novo campo de texto
+            celuladoemail.innerHTML = "";
+            celuladoemail.appendChild(novocampodeemail);
+            
+            //Seguinte, a próxima parte é só banco de dados, eu criei essas 
+            //constantes novas para poder usar nos parâmetros da minha função
+            const _nomebancodedados = _Nomeasertrocado;
+            const _emailbancodedados = _emailasertrocado;
+            //Essa função serve para eu pesquisar o valor a ser redefinido no meu
+            //banco de dados, e então substituir seus atributos pelos inseridos nos
+            //campos de input de email e texto
+            pesquisarUsuarioPorNome(passarnomenafuncao,_nomebancodedados,_emailbancodedados);
+            //Mudando o texto do botão para reutilizar essa função, porém com
+            //a finalidade de criar campos de input de nome e email para que 
+            //eu possa editar seus valores
+            botaodealterar.innerText = "Alterar";      
+        }
+
+    }
+    //A seguinte função serve para eu excluir um valor na minha tabela e no meu 
+    //banco de dados
+    function excluir(event) {
+        //Representação do texto do nome que está na linha atual, para poder
+        //usar como meio de pesquisa no meu banco de dados futuramente e excluí-lo
+        let tirarnobanco = event.target.closest("tr").querySelector("td:nth-child(1) p").innerText;
+        //Apagando a linha da tabela
+        event.currentTarget.parentNode.closest('tr').remove();
+        //As seguintes linhas de código servem para receber as informações
+        // do meu banco de dados, pesquisar um valor que tenha o nome
+        //correspondente ao do meu parâmetro "event", e então apagá-lo
+        //do meu banco de dados
+        get(usuariosRef).then((snapshot) => {
+            if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot) => {
+                const usuario = childSnapshot.val();
+                //Caro analisador, leia com carinho, por favor.
+                //Essa estrutura que você está lendo agora foi feita primeiramente
+                //para uma outra função no meu código de redefinir dados, mas eu a
+                //adaptei para criar uma função que exclui o valor no meu banco de 
+                //dados, estou explicando isso porque a seguinte varia de senha
+                //é completamente desnecessária, porém, assim como antes, estou
+                //com medo de apagar e quebrar meu código de alguma maneira.
+                //Parágrafo meio longo, porém continua sendo parte do meu processo
+                //de criação
+                let _Senha = usuario.senha;
+                //Se o valor do parametro existir no meu banco de dados, a estru-
+                //tura condicial será ativada
+                if (usuario.username === tirarnobanco) {
+                //Essa função excluirá valor do meu banco de dados
+                const removernobancodedados = child(usuariosRef, childSnapshot.key);
+                remove(removernobancodedados);
+                alert("Usuário excluído do banco de dados");
+                }
+            });
+            } else {
+            //Caso nenhum usuário seja encontrado
+            console.log("Nenhum usuário encontrado " );
+            }
+        }).catch((error) => {
+            //Caso um erro aconteça durante a busca
+            console.error("Erro ao buscar usuário: " + error.message);
+        });
+
+        }
+
+    //Essa função serve para eu pesquisar o valor a ser redefinido no meu
+    //banco de dados, e então substituir seus atributos pelos inseridos nos
+    //campos de input de email e texto da linah em que eu usei essa função
+    function pesquisarUsuarioPorNome(nome,valornome,valoremail) {
+        //As seguintes linhas de código servem para receber as informações
+        // do meu banco de dados, pesquisar um valor que tenha o nome
+        //correspondente ao do meu parâmetro nome, para então redefinir seus
+        //valores
+        get(usuariosRef).then((snapshot) => {
+            if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot) => {
+                const usuario = childSnapshot.val();
+                //Salvando a senha em uma variável, pois será necessário
+                //guarda-la para poder redefinir os valores de email, e nome
+                //sem perder a senha do usuário 
+                let _Senha = usuario.senha;
+                //Estrutura condicional que acontecerá se houver um elemento
+                //que corresponde ao valor do parâmetro "nome"
+                if (usuario.username === nome) {
+                //Verificação
+                console.log("Nome do usuário encontrado: " + usuario.username);
+                console.log("Email do usuário: " + usuario.email);
+
+                //Redefinindo os valores do elemento no banco de dados
+                const _usuarioRef = child(usuariosRef, childSnapshot.key);
+                set(_usuarioRef, {
+                    email : valoremail,
+                    senha: _Senha, 
+                    username : valornome
+
+                } );
+
+                }
+            });
+            } else {
+            //Caso nenhum usuário seja encontrado
+            console.log("Nenhum usuário encontrado com o nome: " + nome);
+            }
+        }).catch((error) => {
+            //Caso um erro aconteça durante a busca
+            console.error("Erro ao buscar usuário: " + error.message);
+        });
+    }
+
+    //Essa função foi feita para manter o nome anterior da linha
+    function manternome(palavra){
+            return palavra.target.closest("tr").querySelector("td:nth-child(1) p").innerText ;
+    }
+
+    //Estou adicionando um evento a esse botão, fazendo um redirecionamento ao cadastro
+    //de usuários
+    document.getElementById("novocadastro").addEventListener("click",function () {
+                window.location.href = "index.html?";
+            });
+
+    </script>
+</body>
+</html>
